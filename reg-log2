@@ -1,0 +1,80 @@
+
+import pandas as pd
+import os
+import matplotlib.pyplot as plt
+import numpy as np
+
+EPOCHS = 2000
+ALPHA = 0.2
+LAMB = 0.8
+M = 117
+
+os.chdir("D:/Users/igor.marques/Documents/chagasm/ic/REG-LOG")
+data = pd.read_csv("ex2data2.txt")
+x = data[["x1","x2"]].values
+#x=(x-x.mean())/(x.std())
+#x1 = x["x1"].values.tolist()
+#x2 = x["x2"].values.tolist()
+y = data["y"].values
+
+
+theta = np.array([[1.0], [2.0], [1.0], [1.0], [2.0], [0.5], [0.1], [-0.5]])
+
+def map_feature(x):
+        return np.array([[1.0], [x[0]], [x[1]], [x[0]*x[1]], [x[0]*x[0]], [x[1]*x[1]], [x[0]*x[1]*x[1]], [x[0]*x[0]*x[1]]])
+
+def sig(z):
+    return 1/(1+np.exp(-z))
+
+
+def h(x, theta):
+    x_mapped = map_feature(x)
+    return sig(np.dot(theta.T, x_mapped)[0])
+
+
+
+def simple_j(x,theta,y):
+    return -y*np.log(h(x, theta)) - (1-y)*np.log(1-h(x, theta))
+
+def update_theta(theta, del_theta):
+    theta[0] -= ALPHA*del_theta[0]/M
+    for i in range(1,len(theta)):
+        theta[i] -= ALPHA*(del_theta[i]/M + (LAMB*theta[i]/M))
+    return theta
+
+def step(value):
+    if value >= 0.5:
+        return 1
+    else:
+        return 0
+costs = []
+
+for epoch in range(EPOCHS):
+    cost = 0
+    del_theta = np.zeros(len(theta))#np.array([[0.0], [0.0], [0.0], [0.0], [0.0], [0.0]])
+    for i in range(M):
+        cost += simple_j(x[i],theta,y[i])/M
+        
+        features = map_feature(x[i])                        
+        for j in range(len(theta)):
+            del_theta[j] += (h(x[i], theta) - y[i]) * features[j]
+    
+    theta = update_theta(theta, del_theta)
+    costs.append(cost)            
+
+hits = 0
+y_hats = []
+
+for i in range(len(x)):
+    y_hat = step(h(x[i],theta))
+    y_hats.append(y_hat)
+    if y_hat == y[i]:
+        hits +=1
+
+print("Hits: "+str(hits))        
+print("Accuracy: "+str(hits/M))
+
+
+color = ['red' if item == 1 else 'blue' for item in y_hats]
+plt.scatter(x[:,0], x[:,1], s=50, c=color)    
+plt.show()    
